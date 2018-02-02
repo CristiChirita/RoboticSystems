@@ -29,6 +29,39 @@ class stdr_controller():
 			theta = 2 * atan2(orientation.z, orientation.w) * 180 / pi
 			
 			rospy.loginfo('Current position, x: {}, y: {}, theta: {}'.format(position.x, position.y, theta)
+			
+			try:
+				targetX = float(raw_input('Enter desired X coordinate: '))
+				targetY = float(raw_input('Enter desired Y coordinate: '))
+				targetAngle = float(raw_input('Enter desired angle: '))
+				
+				# Calculate angle to turn to
+				lineAngle = 2 * atan2(targetY - position.y, targetX - position.x) * 180 / pi
+				turnAngle = lineAngle - theta
+				if (turnAngle - 180.0) > 0:
+					setAngle(5, turnAngle - 180, true)
+				else:
+					setAngle(5, turnAngle, false)
+				
+				# Calculate distance to move forward
+				distance = sqrt((targetX - position.x) * (targetX - position.x) + (targetY - position.y) * (targetY - position.y))
+				move(5, distance)
+				
+				# Adjust angle to desired value (requires updating theta information)
+				pose = self.current_pose.pose.pose
+				orientation = pose.orientation
+				theta = 2 * atan2(orientation.z, orientation.w) * 180 / pi
+				turnAngle = targetAngle - theta
+				if (turnAngle - 180.0) > 0:
+					setAngle(5, turnAngle - 180, true)
+				else:
+					setAngle(5, turnAngle, false)
+			except ValueError:
+				rospy.loginfo('Illegal value entered')
+			
+			vel_msg.linear.x = 0.0
+			vel_msg.linear.z = 0.0
+			self.velocity_publisher.publish(vel_msg)
 	
 	def setAngle(speed, angle, clockwise):
 		angular_speed = speed*2*pi/360
