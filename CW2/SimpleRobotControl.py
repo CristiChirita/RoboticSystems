@@ -8,27 +8,28 @@ from PyKDL import Rotation
 class stdr_controller():
 	def __init__(self):
 		rospy.init_node('stdr_controller', anonymous=True)
-		velocity_publisher = rospy.Publisher('/robot0/cmd_vel', Twist, queue_size=10)
-		current_pose_subscriber = rospy.Subscriber('/robot0/odom', Odometry, self.current_callback)
-		current_pose = Odometry()
+		self.velocity_publisher = rospy.Publisher('/robot0/cmd_vel', Twist, queue_size=10)
+		self.current_pose_subscriber = rospy.Subscriber('/robot0/odom', Odometry, self.current_callback)
+		self.current_pose = Odometry()
 		distance_tolerance = 0.01
 		angular_tolerance = 5
 
 	def current_callback(self, data):
 		self.current_pose = data
 	
-	def run():
+	def run(self):
+		vel_msg = Twist()
 		rospy.sleep(1.0)
 		
 		while not rospy.is_shutdown():
-			vel_msg = Twist()
+			
 			
 			pose = self.current_pose.pose.pose
 			position = pose.position
 			orientation = pose.orientation
 			theta = 2 * atan2(orientation.z, orientation.w) * 180 / pi
 			
-			rospy.loginfo('Current position, x: {}, y: {}, theta: {}'.format(position.x, position.y, theta)
+			rospy.loginfo('Current position, x: {}, y: {}, theta: {}'.format(position.x, position.y, theta))
 			
 			try:
 				targetX = float(raw_input('Enter desired X coordinate: '))
@@ -36,26 +37,27 @@ class stdr_controller():
 				targetAngle = float(raw_input('Enter desired angle: '))
 				
 				# Calculate angle to turn to
-				lineAngle = 2 * atan2(targetY - position.y, targetX - position.x) * 180 / pi
+				lineAngle = atan2(targetY - position.y, targetX - position.x) * 180 / pi
 				turnAngle = lineAngle - theta
 				if (turnAngle - 180.0) > 0:
-					setAngle(5, turnAngle - 180, true)
+					self.setAngle(5, turnAngle - 180.0, True)
 				else:
-					setAngle(5, turnAngle, false)
+					self.setAngle(5, turnAngle, False)
 				
 				# Calculate distance to move forward
 				distance = sqrt((targetX - position.x) * (targetX - position.x) + (targetY - position.y) * (targetY - position.y))
-				move(5, distance)
+				self.move(1, distance)
 				
 				# Adjust angle to desired value (requires updating theta information)
 				pose = self.current_pose.pose.pose
 				orientation = pose.orientation
 				theta = 2 * atan2(orientation.z, orientation.w) * 180 / pi
+				rospy.loginfo('Angle: {}'.format(theta))
 				turnAngle = targetAngle - theta
 				if (turnAngle - 180.0) > 0:
-					setAngle(5, turnAngle - 180, true)
+					self.setAngle(5, turnAngle - 180.0, True)
 				else:
-					setAngle(5, turnAngle, false)
+					self.setAngle(5, turnAngle, False)
 			except ValueError:
 				rospy.loginfo('Illegal value entered')
 			
@@ -63,7 +65,8 @@ class stdr_controller():
 			vel_msg.linear.z = 0.0
 			self.velocity_publisher.publish(vel_msg)
 	
-	def setAngle(speed, angle, clockwise):
+	def setAngle(self, speed, angle, clockwise):
+		vel_msg = Twist()		
 		angular_speed = speed*2*pi/360
 		relative_angle = angle*2*pi/360
 		
@@ -81,34 +84,35 @@ class stdr_controller():
 		current_angle = 0
 	
 		while(current_angle < relative_angle):
-			velocity_publisher.publish(vel_msg)
+			self.velocity_publisher.publish(vel_msg)
 			t1 = rospy.Time.now().to_sec()
 			current_angle = angular_speed*(t1 - t0)
 	
 		vel_msg.angular.z = 0
-		velocity_publisher.publish(vel_msg)
-		rospy.spin()
+		self.velocity_publisher.publish(vel_msg)
 	
-	def move(speed, distance):
+	def move(self, speed, distance):
+		vel_msg = Twist()
 		vel_msg.linear.y = 0
 		vel_msg.linear.z = 0
 		vel_msg.angular.x = 0
 		vel_msg.angular.y = 0
 		vel_msg.angular.z = 0
 	
+		vel_msg.linear.x = speed		
 		t0 = rospy.Time.now().to_sec()
 		current_distance = 0
 	
 		while (current_distance < distance):
-			velocity_publisher.publish(vel_msg)
+			self.velocity_publisher.publish(vel_msg)
 			t1=rospy.Time.now().to_sec()
 			current_distance = speed * (t1-t0)
 	
 		vel_msg.linear.x = 0
-		velocity_publisher.publish(vel_msg)
+		self.velocity_publisher.publish(vel_msg)
 
-if __name__ == '__main__'
+if __name__ == '__main__':
 	try:
 		x = stdr_controller()
 		x.run()
-	except: rospy.ROSInterruptException: pass
+	except rospy.ROSInterruptException: pass
