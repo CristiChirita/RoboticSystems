@@ -20,11 +20,20 @@ class stdr_controller():
 			for arg in args:
 				inputfile = arg
 				break
-			# fp = open(inputfile)
 		except getopt.GetoptError:
 			#sys.exit(2)
 			pass
 
+		waypointData = []
+		with open(inputfile) as f:
+			for line in f:
+				data = line.split()
+				a = []
+				a.append(int(data[0]))
+				a.append(int(data[1]))
+				a.append(int(data[2]))
+				waypointData.append(a)
+		
 		distance_tolerance = 0.01
 		angular_tolerance = 5
 
@@ -41,13 +50,17 @@ class stdr_controller():
 			position = pose.position
 			orientation = pose.orientation
 			theta = 2 * atan2(orientation.z, orientation.w) * 180 / pi
+			i = 0
 			
 			rospy.loginfo('Current position, x: {}, y: {}, theta: {}'.format(position.x, position.y, theta))
 			
 			try:
-				targetX = float(raw_input('Enter desired X coordinate: '))
-				targetY = float(raw_input('Enter desired Y coordinate: '))
-				targetAngle = float(raw_input('Enter desired angle: '))
+				# targetX = float(raw_input('Enter desired X coordinate: '))
+				# targetY = float(raw_input('Enter desired Y coordinate: '))
+				# targetAngle = float(raw_input('Enter desired angle: '))
+				targetX = self.waypointData[i][0]
+				targetY = self.waypointData[i][1]
+				targetAngle = self.waypointData[i][2]
 				
 				# Move along X axis
 				if targetX - position.x > 0: #target to the right
@@ -98,6 +111,7 @@ class stdr_controller():
 			except ValueError:
 				rospy.loginfo('Illegal value entered')
 			
+			i = i + 1
 			vel_msg.linear.x = 0.0
 			vel_msg.linear.z = 0.0
 			self.velocity_publisher.publish(vel_msg)
