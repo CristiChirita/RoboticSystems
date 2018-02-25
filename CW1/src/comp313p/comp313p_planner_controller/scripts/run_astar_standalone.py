@@ -5,7 +5,7 @@ from comp313p_planner_controller.astar_planner import AStarPlanner
 
 occupancyGrid = OccupancyGrid(21, 21, 0.5)
 
-for y in xrange(0, 13):
+for y in xrange(0, 20):
     occupancyGrid.setCell(11, y, 1)
 
 start = (3, 18)

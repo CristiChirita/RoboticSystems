@@ -25,22 +25,22 @@ class AStarPlanner(CellBasedAStarSearch):
         cell = heapq.heappop(self.dQueue)
         return cell
 
-    def resolveDuplicate(self, distance, cell):
+    def resolveDuplicate(self, distance, cell, aDist):
         i = 0
 	# Iterate until we find the cell in the queue
 	while i < len(self.dQueue):
-		(currentDistance, currentCell) = self.dQueue[i]
+		(currentDistance, currentCell, altDist) = self.dQueue[i]
 		if cell != currentCell:
 			i = i + 1
 			continue
 		# Do nothing if cell is already at a lower cost than the one we are trying to give
 		if distance >= currentDistance:
-			return
+			return False
 		else:
 			# Remove cell from list, and push again with updated cost
-			self.dQueue.remove((currentDistance, currentCell))
+			self.dQueue.remove((currentDistance, currentCell, altDist))
 			heapq.heapify(self.dQueue)
-			heapq.heappush(self.dQueue, (distance, cell))
-			return
+			heapq.heappush(self.dQueue, (distance, cell, aDist))
+			return True
 
         

@@ -9,6 +9,8 @@ from planned_path import PlannedPath
 from math import *
 import rospy
 
+import time
+
 class AStarAlgorithm(PlannerBase):
 
     # This class implements the basic framework for LaValle's general
@@ -76,9 +78,9 @@ class AStarAlgorithm(PlannerBase):
         L = abs(dX) + abs(dY)
         return L
     
-    # Compute the Octulle distance to target, function works similarly 
+    # Compute the Octile distance to target, function works similarly 
     # to the below function
-    def computeOctilleCost(self, parentCell, cell):
+    def computeOctileCost(self, parentCell, cell):
         if (parentCell is None):
 	    return 0
 	
@@ -98,10 +100,11 @@ class AStarAlgorithm(PlannerBase):
         if (parentCell is None):
             return 0
         
-        # Cost is the Cartesian distance
+        # Cost is the Cartesian distance + heuristic value
         dX = cell.coords[0] - parentCell.coords[0]
         dY = cell.coords[1] - parentCell.coords[1]
         L = sqrt(dX * dX + dY * dY)
+	
 	
         try:
                 isinstance(float(self.heuristic), float)
@@ -110,7 +113,7 @@ class AStarAlgorithm(PlannerBase):
             if self.heuristic == "C":
 		return L + self.alpha * self.computeLStageAdditiveCost(cell, self.goal)
 	    elif self.heuristic == "O":
-		return L + self.alpha * self.computeOctilleCost(cell, self.goal)
+		return L + self.alpha * self.computeOctileCost(cell, self.goal)
 	    elif self.heuristic == "M":
 		return L + self.alpha * self.computeManhattanCost(cell, self.goal)
 	    else:
@@ -163,7 +166,7 @@ class AStarAlgorithm(PlannerBase):
 
         # Insert the start on the queue to start the process going.
         self.markCellAsVisitedAndRecordParent(self.start, None)
-        self.pushCellOntoQueue((0, self.start))
+        self.pushCellOntoQueue((0, self.start, 0))
 
         # Reset the count
         self.numberOfCellsVisited = 0
@@ -179,19 +182,21 @@ class AStarAlgorithm(PlannerBase):
             if rospy.is_shutdown():
                 return False
             
-            (distance, cell) = self.popCellFromQueue()
+            (distance, cell, actualDistance) = self.popCellFromQueue()
             if (self.hasGoalBeenReached(cell) == True):
                 self.goalReached = True
                 break
             cells = self.getNextSetOfCellsToBeVisited(cell)
             for nextCell in cells:
-		nextDistance = distance + self.computeCost(cell, nextCell)
+		nextDistance = actualDistance + self.computeCost(cell, nextCell)
                 if (self.hasCellBeenVisitedAlready(nextCell) == False):
                     self.markCellAsVisitedAndRecordParent(nextCell, cell)
-                    self.pushCellOntoQueue((nextDistance, nextCell))
+                    self.pushCellOntoQueue((nextDistance, nextCell, actualDistance + self.computeLStageAdditiveCost(cell, nextCell)))
                     self.numberOfCellsVisited = self.numberOfCellsVisited + 1
                 else:
-                    self.resolveDuplicate(nextDistance, nextCell)
+                    value = self.resolveDuplicate(nextDistance, nextCell, actualDistance + self.computeLStageAdditiveCost(cell, nextCell))
+                    if value == True:
+                       self.markCellAsVisitedAndRecordParent(nextCell, cell)
 
             # Now that we've checked all the actions for this cell,
             # mark it as dead
@@ -199,7 +204,6 @@ class AStarAlgorithm(PlannerBase):
 
             # Draw the update if required
             self.drawCurrentState()
-
         # Do a final draw to make sure that the graphics are shown, even at the end state
         self.drawCurrentState()
         
